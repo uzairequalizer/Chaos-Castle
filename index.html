@@ -1,680 +1,910 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Chaos Castle</title>
-<script src="https://cdn.jsdelivr.net/npm/ably@1.2.50/ably.min.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{background:#0d0520;color:#fff;font-family:'Segoe UI',sans-serif;overflow:hidden;touch-action:none}
-#ui{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:100;background:#0d0520}
-.screen{display:none;flex-direction:column;align-items:center;gap:14px;padding:28px 24px;width:360px;background:rgba(20,8,50,0.97);border-radius:20px;border:1px solid #6644cc;box-shadow:0 0 40px rgba(100,68,200,0.3)}
-.screen.active{display:flex}
-.logo{font-size:2.4rem;font-weight:700;background:linear-gradient(135deg,#ffcc44,#ff8800);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:1px}
-.sub{font-size:.85rem;color:#9988cc;text-align:center;line-height:1.5}
-input{width:100%;padding:11px 14px;border-radius:10px;border:1px solid #4433aa;background:#1a0d40;color:#fff;font-size:1rem;outline:none}
-input:focus{border-color:#8866ff}
-.btn{width:100%;padding:12px;border-radius:10px;border:none;background:linear-gradient(135deg,#6633cc,#4422aa);color:#fff;font-size:1rem;cursor:pointer;font-weight:600;letter-spacing:.5px;transition:all .2s}
-.btn:hover{transform:translateY(-1px);box-shadow:0 4px 20px rgba(100,50,200,.5)}
-.btn.ghost{background:transparent;border:1px solid #4433aa;font-weight:400}
-.btn.ghost:hover{background:#1a0d40}
-.room-code{font-size:3rem;font-weight:700;letter-spacing:10px;color:#ffcc44;font-family:monospace;padding:10px 20px;background:#1a0d40;border-radius:12px;border:1px dashed #6644cc}
-#player-list{width:100%;display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
-.player-item{padding:8px 12px;background:#1a0d40;border-radius:10px;display:flex;align-items:center;gap:10px;font-size:.9rem}
-.player-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.you-tag{margin-left:auto;font-size:.7rem;color:#9988cc;background:#0d0520;padding:2px 8px;border-radius:20px}
-#canvas-wrap{position:fixed;inset:0;display:none}
-canvas{display:block}
-#hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;pointer-events:none;max-width:90%}
-.score-badge{background:rgba(13,5,32,0.85);border:1px solid #4433aa;border-radius:20px;padding:4px 14px;font-size:.8rem;display:flex;align-items:center;gap:6px}
-.score-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
-#phase-banner{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(13,5,32,0.95);border:2px solid #ffcc44;border-radius:16px;padding:18px 40px;font-size:1.5rem;color:#ffcc44;text-align:center;display:none;pointer-events:none;z-index:300;text-shadow:0 0 20px rgba(255,204,68,.5)}
-#timer{position:fixed;top:10px;right:14px;font-size:1.1rem;font-weight:700;color:#ffcc44;pointer-events:none;display:none;background:rgba(13,5,32,.8);padding:4px 12px;border-radius:20px;border:1px solid #4433aa}
-#round-tag{position:fixed;top:10px;left:14px;font-size:.8rem;color:#9988cc;pointer-events:none;background:rgba(13,5,32,.8);padding:4px 12px;border-radius:20px;border:1px solid #4433aa;display:none}
-#obstacle-picker{position:fixed;bottom:0;left:0;width:100%;background:rgba(13,5,32,0.97);border-top:1px solid #6644cc;padding:12px 16px 20px;display:none;flex-direction:column;align-items:center;gap:10px;z-index:200}
-#obstacle-picker h3{font-size:.9rem;color:#aaa;font-weight:400}
-#obs-btns{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
-.obs-btn{padding:8px 14px;border-radius:10px;border:1px solid;background:rgba(0,0,0,.3);color:#fff;cursor:pointer;font-size:.82rem;transition:all .15s}
-.obs-btn:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,.4)}
-#mobile-controls{position:fixed;bottom:0;left:0;width:100%;pointer-events:none;display:none}
-.mctrl{position:fixed;width:64px;height:64px;border-radius:50%;background:rgba(100,50,200,0.35);border:2px solid rgba(100,50,200,0.6);display:flex;align-items:center;justify-content:center;font-size:1.3rem;pointer-events:all;user-select:none;touch-action:none;-webkit-tap-highlight-color:transparent}
-#btn-left{bottom:90px;left:16px}
-#btn-right{bottom:90px;left:96px}
-#btn-jump{bottom:90px;right:16px;width:72px;height:72px;background:rgba(200,150,50,0.4);border-color:rgba(255,204,68,.6)}
-#status-toast{position:fixed;bottom:180px;left:50%;transform:translateX(-50%);background:rgba(13,5,32,.9);border:1px solid #6644cc;padding:8px 20px;border-radius:20px;font-size:.85rem;display:none;pointer-events:none;z-index:250;white-space:nowrap}
-#end-overlay{position:fixed;inset:0;background:rgba(5,2,15,0.92);display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;z-index:400}
-#results-list{display:flex;flex-direction:column;gap:6px;width:300px}
-.result-row{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:rgba(255,255,255,.04);border-radius:10px;border:1px solid #2a1a5e}
-.result-row.gold{background:rgba(255,204,68,.1);border-color:#ffcc44}
-.result-row.silver{background:rgba(200,200,220,.07);border-color:#aaaacc}
-.result-row.bronze{background:rgba(200,120,50,.08);border-color:#cc8844}
-.result-place{font-size:1.2rem;width:30px}
-#particles-canvas{position:fixed;inset:0;pointer-events:none;z-index:350;display:none}
-.pulse{animation:pulse 1.5s infinite}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Trap Race Deluxe</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f7f7f5;
+      --card: #ffffff;
+      --border: rgba(0,0,0,0.12);
+      --text: #1a1a1a;
+      --muted: #666;
+      --accent: #1a1a1a;
+      --success-bg: #eaf3de;
+      --success-txt: #27500a;
+      --warn-bg: #faeeda;
+      --warn-txt: #633806;
+      --info-bg: #e6f1fb;
+      --info-txt: #0c447c;
+      --danger-bg: #fcebeb;
+      --danger-txt: #791f1f;
+      --radius: 12px;
+      --radius-sm: 8px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 1rem;
+    }
+
+    #app {
+      width: 100%;
+      max-width: 420px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem;
+      margin-bottom: 1rem;
+    }
+
+    h1 { font-size: 24px; font-weight: 600; margin-bottom: 0.25rem; }
+    h2 { font-size: 18px; font-weight: 600; margin-bottom: 0.4rem; }
+    p  { font-size: 14px; color: var(--muted); line-height: 1.5; }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      background: var(--card);
+      color: var(--text);
+      margin: 5px 0;
+      outline: none;
+    }
+    input[type="text"]:focus { border-color: rgba(0,0,0,0.4); }
+
+    button {
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-weight: 500;
+      padding: 11px 16px;
+      border: 0.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      transition: opacity 0.15s, transform 0.1s;
+      width: 100%;
+      margin-top: 6px;
+    }
+    button:active { opacity: 0.8; transform: scale(0.98); }
+    .btn-primary { background: var(--text); color: var(--card); border: none; }
+    .btn-row { display: flex; gap: 8px; }
+    .btn-row button { margin-top: 0; }
+
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 0.6rem;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .b-lobby  { background: var(--info-bg);    color: var(--info-txt); }
+    .b-char   { background: var(--warn-bg);    color: var(--warn-txt); }
+    .b-map    { background: var(--success-bg); color: var(--success-txt); }
+    .b-build  { background: #faeeda;           color: #633806; }
+    .b-race   { background: var(--success-bg); color: var(--success-txt); }
+    .b-done   { background: #f1efe8;           color: #444; }
+
+    .grid2 {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin: 0.6rem 0;
+    }
+
+    .sel-card {
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 8px;
+      cursor: pointer;
+      text-align: center;
+      background: var(--card);
+      transition: border-color 0.15s, background 0.15s;
+      user-select: none;
+    }
+    .sel-card.active {
+      border-color: var(--text);
+      background: var(--bg);
+    }
+    .sel-card .icon { font-size: 24px; margin-bottom: 3px; }
+    .sel-card .name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .sel-card .desc { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+    .row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 0;
+      border-bottom: 0.5px solid var(--border);
+      font-size: 13px;
+    }
+    .row:last-child { border-bottom: none; }
+    .dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 5px;
+    }
+
+    .trap-row {
+      display: flex;
+      gap: 5px;
+      flex-wrap: wrap;
+      margin: 0.5rem 0;
+    }
+    .tbtn {
+      flex: 1;
+      min-width: 56px;
+      padding: 7px 4px;
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 1.5px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      text-align: center;
+      border-left-width: 3px;
+    }
+    .tbtn.on { border-color: var(--text); background: var(--bg); }
+
+    canvas {
+      display: block;
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      touch-action: none;
+      width: 100%;
+    }
+
+    .controls {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .ctrl-btn {
+      flex: 1;
+      padding: 16px 8px;
+      font-size: 22px;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      border: 0.5px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      text-align: center;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .ctrl-btn:active { background: var(--border); }
+
+    .gold { color: #b8860b; font-weight: 600; }
+    .medal { font-size: 16px; }
+
+    .pu-pill {
+      display: inline-block;
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 10px;
+      background: var(--warn-bg);
+      color: var(--warn-txt);
+      font-weight: 600;
+      margin-left: 6px;
+    }
+
+    .room-code {
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 4px;
+      text-align: center;
+      padding: 12px;
+      background: var(--bg);
+      border-radius: var(--radius-sm);
+      margin: 0.5rem 0;
+      color: var(--text);
+    }
+
+    .info-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+
+    .hp-bar {
+      height: 5px;
+      background: #e0e0e0;
+      border-radius: 3px;
+      margin: 4px 0;
+      overflow: hidden;
+    }
+    .hp-fill { height: 5px; border-radius: 3px; background: #639922; transition: width 0.2s; }
+
+    #toast {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--text);
+      color: var(--card);
+      padding: 10px 20px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transition: opacity 0.3s;
+      pointer-events: none;
+      z-index: 999;
+    }
+    #toast.show { opacity: 1; }
+
+    .loader {
+      text-align: center;
+      padding: 2rem;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .firebase-note {
+      background: var(--info-bg);
+      color: var(--info-txt);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      font-size: 13px;
+      margin-bottom: 1rem;
+      border: 0.5px solid rgba(55,138,221,0.3);
+    }
+  </style>
 </head>
 <body>
-<div id="ui">
-  <div class="screen active" id="screen-home">
-    <div class="logo">⚔ Chaos Castle</div>
-    <p class="sub">Place traps. Race to the flag.<br>Only the cunning survive.</p>
-    <input id="inp-name" placeholder="Enter your knight's name" maxlength="12">
-    <button class="btn" onclick="goLobby()">Enter the Castle</button>
-  </div>
-  <div class="screen" id="screen-lobby">
-    <div class="logo">⚔ Chaos Castle</div>
-    <button class="btn" onclick="createRoom()">Create Room</button>
-    <button class="btn ghost" onclick="show('screen-join')">Join Room</button>
-  </div>
-  <div class="screen" id="screen-join">
-    <div style="font-size:1.1rem;font-weight:600;color:#aaf">Join a Room</div>
-    <input id="inp-code" placeholder="ROOM CODE" maxlength="6" style="text-align:center;font-size:1.4rem;letter-spacing:6px;text-transform:uppercase">
-    <button class="btn" onclick="joinRoom()">Join</button>
-    <button class="btn ghost" onclick="show('screen-lobby')">Back</button>
-  </div>
-  <div class="screen" id="screen-room">
-    <div class="logo" style="font-size:1.5rem">Room Code</div>
-    <div class="room-code" id="disp-code"></div>
-    <p class="sub">Share with friends — works across devices!</p>
-    <div id="player-list"></div>
-    <div style="width:100%;display:flex;gap:8px">
-      <button class="btn" id="btn-start" onclick="startGame()" style="display:none">⚔ Start Game</button>
-    </div>
-    <p id="wait-msg" style="color:#6655aa;font-size:.85rem" class="pulse">Waiting for host to start...</p>
-  </div>
-</div>
+<div id="app"><div class="loader">Loading game...</div></div>
+<div id="toast"></div>
 
-<div id="canvas-wrap"><canvas id="gc"></canvas></div>
-<canvas id="particles-canvas"></canvas>
-<div id="hud"></div>
-<div id="timer"></div>
-<div id="round-tag"></div>
-<div id="phase-banner"></div>
-<div id="status-toast"></div>
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import {
+  getDatabase, ref, set, get, onValue, off, update
+} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js';
 
-<div id="obstacle-picker">
-  <h3 id="pick-title">Choose a trap to place — then click a platform</h3>
-  <div id="obs-btns"></div>
-  <button class="btn ghost" onclick="skipPlacement()" style="width:160px;font-size:.85rem;padding:8px">Skip turn</button>
-</div>
+// ─── FIREBASE CONFIG ───────────────────────────────────────────────────────────
+// Replace these values with your own Firebase project config.
+// Get it from: Firebase Console → Project Settings → Your apps → Web app config
+const FIREBASE_CONFIG = {
+  apiKey:            "REPLACE_WITH_YOUR_API_KEY",
+  authDomain:        "REPLACE_WITH_YOUR_AUTH_DOMAIN",
+  databaseURL:       "REPLACE_WITH_YOUR_DATABASE_URL",
+  projectId:         "REPLACE_WITH_YOUR_PROJECT_ID",
+  storageBucket:     "REPLACE_WITH_YOUR_STORAGE_BUCKET",
+  messagingSenderId: "REPLACE_WITH_YOUR_MESSAGING_SENDER_ID",
+  appId:             "REPLACE_WITH_YOUR_APP_ID"
+};
+// ──────────────────────────────────────────────────────────────────────────────
 
-<div id="mobile-controls">
-  <div class="mctrl" id="btn-left">◀</div>
-  <div class="mctrl" id="btn-right">▶</div>
-  <div class="mctrl" id="btn-jump">▲</div>
-</div>
+const RACE_DUR   = 60;
+const BUILD_DUR  = 25;
 
-<div id="end-overlay">
-  <div style="font-size:3rem">🏆</div>
-  <div id="winner-name" style="font-size:1.6rem;font-weight:700;color:#ffcc44;text-shadow:0 0 20px rgba(255,204,68,.6)"></div>
-  <div class="sub" id="winner-sub"></div>
-  <div id="results-list"></div>
-  <button class="btn" onclick="restartGame()" style="width:220px;margin-top:6px">Play Again</button>
-</div>
-
-<script>
-const ABLY_KEY="kdMazA.2Fyi4g:dX8nh19LMHx5-1Df2K5a7IGdN_rekAnl0182jxyrIhk";
-const COLORS=["#ff4488","#44aaff","#44ff99","#ffcc44","#ff8844","#88eeff","#dd88ff","#aaffaa","#ff6688","#66ccff"];
-const HATS=["👑","🎩","⛑","🪖","🎓","🏺"];
-const OBS=[
-  {id:"spike",label:"⚡ Spikes",color:"#ff4444",bcolor:"rgba(200,50,50,.25)"},
-  {id:"bounce",label:"🌀 Bounce",color:"#44ccff",bcolor:"rgba(50,150,200,.25)"},
-  {id:"fire",label:"🔥 Fire",color:"#ff8800",bcolor:"rgba(200,100,0,.25)"},
-  {id:"ice",label:"❄ Ice",color:"#aaddff",bcolor:"rgba(100,180,255,.25)"},
-  {id:"wind",label:"💨 Wind",color:"#88ffcc",bcolor:"rgba(80,200,150,.25)"},
-  {id:"poison",label:"☠ Poison",color:"#88ff44",bcolor:"rgba(80,200,50,.25)"},
-  {id:"teleport",label:"🌀 Portal",color:"#cc88ff",bcolor:"rgba(150,80,255,.25)"},
-  {id:"gravity",label:"🪐 Gravity",color:"#ffaaff",bcolor:"rgba(200,100,200,.25)"}
+const COLORS = [
+  '#E24B4A','#378ADD','#639922','#D4537E',
+  '#BA7517','#7F77DD','#1D9E75','#D85A30'
 ];
 
-let ably,channel,myId,myName,roomCode,isHost=false;
-let players={},scores={},playerHats={};
-let gameState="lobby";
-let roundNum=0,maxRounds=6;
-let placementOrder=[],placementIdx=0;
-let myPlacementDone=false;
-let obstacles=[];
-let platforms=[];
-let flag={x:0,y:0};
-let W,H,gameObjects={};
-let keys={left:false,right:false,jump:false};
-let jumpPressed=false;
-let animId,runTimer=0,runInterval;
-let finishers=[];
-let particles=[];
-let lowGravity=false;
+const CHARACTERS = [
+  { id:'ninja',  name:'Ninja',  desc:'Super fast',          icon:'🥷',  speed:0.009, jump:-0.032, size:7 },
+  { id:'robot',  name:'Robot',  desc:'30% less damage',     icon:'🤖',  speed:0.006, jump:-0.026, size:9,  armor:true },
+  { id:'witch',  name:'Witch',  desc:'Double jump',         icon:'🧙',  speed:0.007, jump:-0.028, size:7,  dblJump:true },
+  { id:'ghost',  name:'Ghost',  desc:'Spikes harmless',     icon:'👻',  speed:0.0065,jump:-0.029, size:7,  ghost:true },
+  { id:'knight', name:'Knight', desc:'Immune to ice',       icon:'⚔️', speed:0.0065,jump:-0.027, size:8,  iceImmune:true },
+  { id:'fairy',  name:'Fairy',  desc:'Floaty jumps',        icon:'🧚',  speed:0.007, jump:-0.036, size:6,  slowFall:true },
+];
 
-function show(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
-function goLobby(){
-  myName=document.getElementById('inp-name').value.trim()||"Knight";
-  myId="p_"+Math.random().toString(36).substr(2,8);
-  myHat=HATS[Math.floor(Math.random()*HATS.length)];
-  initAbly();show('screen-lobby');
+const MAPS = [
+  { id:'grass', name:'Grassland', icon:'🌿', sky:'#d4edda', ground:'#2d6a4f', groundLight:'#95d5b2', platforms:[] },
+  { id:'lava',  name:'Lava World',icon:'🌋', sky:'#fce4d6', ground:'#9d2b05', groundLight:'#f4845f',
+    platforms:[{x:.18,y:.54,w:.13,h:.04},{x:.47,y:.44,w:.11,h:.04},{x:.73,y:.53,w:.12,h:.04}] },
+  { id:'ice',   name:'Ice Kingdom',icon:'❄️',sky:'#dbeeff', ground:'#1a5f99', groundLight:'#74b3e8',
+    platforms:[{x:.14,y:.49,w:.15,h:.04},{x:.44,y:.41,w:.13,h:.04},{x:.69,y:.51,w:.13,h:.04}], slippery:true },
+  { id:'night', name:'Night City', icon:'🌃', sky:'#1a1035', ground:'#3c3289', groundLight:'#7b6fd4',
+    platforms:[{x:.22,y:.52,w:.11,h:.04},{x:.5,y:.43,w:.14,h:.04},{x:.76,y:.53,w:.1,h:.04}] },
+];
+
+const TRAPS = [
+  { id:'spike',  lbl:'Spike',  icon:'▲', col:'#E24B4A', dmg:35 },
+  { id:'pit',    lbl:'Pit',    icon:'◉', col:'#333',    dmg:55 },
+  { id:'ice',    lbl:'Ice',    icon:'❄', col:'#378ADD', dmg:0, slow:true },
+  { id:'spring', lbl:'Spring', icon:'⟳', col:'#BA7517', dmg:0, bounce:true },
+  { id:'bomb',   lbl:'Bomb',   icon:'💣',col:'#E24B4A', dmg:45 },
+  { id:'web',    lbl:'Web',    icon:'◈', col:'#888',    dmg:0, sticky:true },
+];
+
+const POWERUP_TYPES = [
+  { id:'shield', icon:'🛡', col:'#639922', lbl:'Shield 8s' },
+  { id:'boost',  icon:'⚡', col:'#BA7517', lbl:'Speed 5s' },
+  { id:'heal',   icon:'💊', col:'#1D9E75', lbl:'+40 HP' },
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let db, roomRef, myId='', myRoom='', myName='', myChar=null, myMap=null;
+let roomData=null, unsubscribe=null;
+let canvas=null, ctx=null;
+let myX=0.03, myY=0.65, myVX=0, myVY=0, myHP=100, myFinished=false, myJumps=0;
+let moving=false, raceTimer=null, lastSave=0;
+let activePowerup=null, shielded=false, boosted=false;
+let selectedTrap='spike';
+
+// ─── UTILS ───────────────────────────────────────────────────────────────────
+function uid() { return Math.random().toString(36).slice(2,9); }
+function amHost() { return roomData && roomData.hostId === myId; }
+function toast(msg, dur=2500) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), dur);
 }
-let myHat="👑";
+function getChar(id) { return CHARACTERS.find(c=>c.id===id) || CHARACTERS[0]; }
+function getMap(id)  { return MAPS.find(m=>m.id===id)  || MAPS[0]; }
+function getTrap(id) { return TRAPS.find(t=>t.id===id) || TRAPS[0]; }
 
-function initAbly(){ably=new Ably.Realtime({key:ABLY_KEY,clientId:myId});}
-function createRoom(){roomCode=Math.random().toString(36).substr(2,4).toUpperCase();isHost=true;joinChannel();}
-function joinRoom(){roomCode=document.getElementById('inp-code').value.trim().toUpperCase();if(!roomCode)return;isHost=false;joinChannel();}
+// ─── FIREBASE INIT ───────────────────────────────────────────────────────────
+function initFirebase() {
+  try {
+    const app = initializeApp(FIREBASE_CONFIG);
+    db = getDatabase(app);
+    return true;
+  } catch(e) {
+    return false;
+  }
+}
 
-function joinChannel(){
-  channel=ably.channels.get("cc3-"+roomCode);
-  channel.subscribe(handleMsg);
-  const cidx=Object.keys(players).length%COLORS.length;
-  channel.presence.enter({name:myName,color:COLORS[cidx],hat:myHat});
-  channel.presence.subscribe(handlePresence);
-  channel.presence.get((err,members)=>{
-    members&&members.forEach(m=>{addPlayer(m.clientId,m.data);});
-    renderPlayerList();
+async function dbSet(path, data) {
+  await set(ref(db, path), data);
+}
+async function dbUpdate(path, data) {
+  await update(ref(db, path), data);
+}
+async function dbGet(path) {
+  const snap = await get(ref(db, path));
+  return snap.exists() ? snap.val() : null;
+}
+function dbListen(path, cb) {
+  const r = ref(db, path);
+  onValue(r, snap => cb(snap.exists() ? snap.val() : null));
+  return () => off(r);
+}
+
+// ─── JOIN / CREATE ROOM ───────────────────────────────────────────────────────
+async function joinRoom() {
+  myName = document.getElementById('iname').value.trim() || 'Player';
+  myRoom = (document.getElementById('iroom').value.trim() || uid().slice(0,6)).toUpperCase().slice(0,8);
+  myId   = uid();
+
+  let room = await dbGet(`rooms/${myRoom}`);
+  const colorIdx = room ? Object.keys(room.players||{}).length : 0;
+
+  if (!room) {
+    room = {
+      phase:'charselect', hostId:myId, mapId:'grass', round:0,
+      players:{}, traps:[], powerupSpawns:[], timer:0
+    };
+    await dbSet(`rooms/${myRoom}`, room);
+  }
+
+  await dbUpdate(`rooms/${myRoom}/players/${myId}`, {
+    name: myName, hp:100, x:0.03, y:0.65, finished:false,
+    score:0, color:COLORS[colorIdx%COLORS.length], charId:'ninja',
+    shielded:false, powerup:null
   });
-  document.getElementById('disp-code').textContent=roomCode;
-  show('screen-room');updateStartBtn();
+
+  roomData = await dbGet(`rooms/${myRoom}`);
+  startListening();
+  showCharSelect();
 }
 
-function addPlayer(id,data){
-  if(!players[id])players[id]={...data,id};
-  if(!scores[id])scores[id]=0;
-  if(!playerHats[id])playerHats[id]=data.hat||"👑";
+function startListening() {
+  if (unsubscribe) unsubscribe();
+  unsubscribe = dbListen(`rooms/${myRoom}`, data => {
+    if (!data) return;
+    const prevPhase = roomData ? roomData.phase : null;
+    roomData = data;
+    if (prevPhase !== data.phase) renderPhase();
+    else syncUI();
+  });
 }
 
-function handlePresence(msg){
-  if(msg.action==="enter"||msg.action==="update")addPlayer(msg.clientId,msg.data);
-  else if(msg.action==="leave")delete players[msg.clientId];
-  renderPlayerList();updateStartBtn();
+function renderPhase() {
+  if (!roomData) return;
+  if (raceTimer) { clearInterval(raceTimer); raceTimer=null; }
+  const p = roomData.phase;
+  if (p==='charselect') showCharSelect();
+  else if (p==='mapselect') showMapSelect();
+  else if (p==='build')  showBuild();
+  else if (p==='race')   initRaceUI();
+  else if (p==='results') showResults();
 }
 
-function renderPlayerList(){
-  document.getElementById('player-list').innerHTML=Object.values(players).map(p=>
-    `<div class="player-item"><div class="player-dot" style="background:${p.color}"></div>
-    <span>${p.hat||"👑"} ${p.name}</span>${p.id===myId?'<span class="you-tag">you</span>':''}</div>`
-  ).join('');
-}
-function updateStartBtn(){
-  document.getElementById('btn-start').style.display=isHost?'block':'none';
-  document.getElementById('wait-msg').style.display=isHost?'none':'block';
+function syncUI() {
+  if (!roomData) return;
+  if (roomData.phase==='lobby' || roomData.phase==='charselect') showCharSelect();
+  else if (roomData.phase==='build') refreshBuildCanvas();
+  else if (roomData.phase==='results') showResults();
 }
 
-function handleMsg(msg){
-  const d=msg.data;
-  if(d.type==="start_game"){scores={};Object.keys(players).forEach(id=>scores[id]=0);roundNum=0;obstacles=[];beginRound(d.seed);}
-  else if(d.type==="begin_round"){beginRound(d.seed);}
-  else if(d.type==="placement_order"){placementOrder=d.order;placementIdx=0;startPlacementPhase();}
-  else if(d.type==="place_obstacle"){obstacles.push(d.obs);spawnParticles(d.obs.x+20,d.obs.y+10,10,"#ffcc44");nextPlacement();}
-  else if(d.type==="skip_placement"){nextPlacement();}
-  else if(d.type==="start_run"){startRunPhase();}
-  else if(d.type==="player_move"){
-    if(d.id!==myId&&gameObjects[d.id]){
-      gameObjects[d.id].sx=d.x;gameObjects[d.id].sy=d.y;gameObjects[d.id].vx=d.vx||0;
-      gameObjects[d.id].dead=d.dead||false;gameObjects[d.id].finished=d.finished||false;
+// ─── CHARACTER SELECT ────────────────────────────────────────────────────────
+function showCharSelect() {
+  myChar = getChar((roomData.players[myId]||{}).charId||'ninja');
+  const players = Object.values(roomData.players||{});
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <span class="badge b-char">Choose character</span>
+      <h2>Pick your fighter</h2>
+      <p>Room code — share with friends:</p>
+      <div class="room-code">${myRoom}</div>
+      <div class="grid2">${CHARACTERS.map(c=>`
+        <div class="sel-card ${myChar.id===c.id?'active':''}" onclick="pickChar('${c.id}')">
+          <div class="icon">${c.icon}</div>
+          <div class="name">${c.name}</div>
+          <div class="desc">${c.desc}</div>
+        </div>`).join('')}
+      </div>
+      <p style="margin:.4rem 0;font-size:12px">Players joined: ${players.map(p=>`<span style="color:${p.color}">●</span> ${p.name}`).join('  ')}</p>
+      ${amHost()
+        ? `<button class="btn btn-primary" onclick="hostGoMapSelect()">Next: Pick Map →</button>`
+        : `<p style="text-align:center;margin-top:.5rem;font-size:13px">⏳ Waiting for host to continue...</p>`}
+    </div>`;
+}
+
+async function pickChar(id) {
+  myChar = getChar(id);
+  await dbUpdate(`rooms/${myRoom}/players/${myId}`, { charId: id });
+}
+
+async function hostGoMapSelect() {
+  await dbUpdate(`rooms/${myRoom}`, { phase:'mapselect' });
+}
+
+// ─── MAP SELECT ───────────────────────────────────────────────────────────────
+function showMapSelect() {
+  myMap = getMap(roomData.mapId||'grass');
+  document.getElementById('app').innerHTML = `
+    <div class="card">
+      <span class="badge b-map">Choose map</span>
+      <h2>Pick the arena</h2>
+      <div class="grid2">${MAPS.map(m=>`
+        <div class="sel-card ${myMap.id===m.id?'active':''}" onclick="${amHost()?`pickMap('${m.id}')`:''}"
+             style="${!amHost()?'opacity:.55;cursor:default':''}">
+          <div class="icon">${m.icon}</div>
+          <div class="name">${m.name}</div>
+          <div class="desc">${m.slippery?'Slippery!':m.platforms.length?'Platforms':'Open field'}</div>
+        </div>`).join('')}
+      </div>
+      ${amHost()
+        ? `<button class="btn btn-primary" onclick="hostStartBuild()">Start Build Phase →</button>`
+        : `<p style="text-align:center;margin-top:.5rem;font-size:13px">⏳ Host is choosing the map...</p>`}
+    </div>`;
+}
+
+async function pickMap(id) {
+  myMap = getMap(id);
+  await dbUpdate(`rooms/${myRoom}`, { mapId: id });
+  showMapSelect();
+}
+
+async function hostStartBuild() {
+  const map = getMap(roomData.mapId||'grass');
+  const spawns = [
+    { px:0.3, py: map.platforms.length?0.37:0.55, type: POWERUP_TYPES[Math.floor(Math.random()*3)].id, alive:true },
+    { px:0.62,py: map.platforms.length?0.34:0.55, type: POWERUP_TYPES[Math.floor(Math.random()*3)].id, alive:true },
+  ];
+  const updates = { phase:'build', timer: Date.now()+BUILD_DUR*1000, traps:[], powerupSpawns:spawns };
+  const players = roomData.players||{};
+  Object.keys(players).forEach(id => {
+    updates[`players/${id}/hp`]       = 100;
+    updates[`players/${id}/x`]        = 0.03;
+    updates[`players/${id}/y`]        = 0.65;
+    updates[`players/${id}/finished`] = false;
+    updates[`players/${id}/shielded`] = false;
+    updates[`players/${id}/powerup`]  = null;
+  });
+  await dbUpdate(`rooms/${myRoom}`, updates);
+}
+
+// ─── BUILD PHASE ─────────────────────────────────────────────────────────────
+function showBuild() {
+  myMap = getMap(roomData.mapId||'grass');
+  const rem = Math.max(0, Math.ceil((roomData.timer - Date.now())/1000));
+  document.getElementById('app').innerHTML = `
+    <div class="card" style="padding:1rem">
+      <div class="info-bar">
+        <span class="badge b-build" style="margin:0">Build Phase</span>
+        <span id="build-timer" style="font-size:18px;font-weight:700;color:#633806">${rem}s</span>
+      </div>
+      <p style="margin-bottom:.5rem">Tap the track to place your trap. Make it evil.</p>
+      <div class="trap-row">${TRAPS.map(t=>`
+        <div class="tbtn ${selectedTrap===t.id?'on':''}" onclick="pickTrap('${t.id}')"
+             style="border-left-color:${t.col}">${t.icon} ${t.lbl}</div>`).join('')}
+      </div>
+      <canvas id="gc" height="150"></canvas>
+      <p style="font-size:11px;color:var(--muted);margin-top:.3rem" id="trap-count">${(roomData.traps||[]).length} trap(s) placed</p>
+      ${amHost()?`<button class="btn btn-primary" style="margin-top:.5rem" id="start-race-btn" onclick="hostStartRace()">Start Race! →</button>`:''}
+    </div>`;
+  setupCanvas('gc');
+  drawMap();
+  startBuildCountdown();
+}
+
+let buildCountdown=null;
+function startBuildCountdown(){
+  if(buildCountdown)clearInterval(buildCountdown);
+  buildCountdown=setInterval(()=>{
+    const el=document.getElementById('build-timer');
+    if(!el){clearInterval(buildCountdown);return;}
+    const rem=Math.max(0,Math.ceil((roomData.timer-Date.now())/1000));
+    el.textContent=rem+'s';
+    if(rem<=0){clearInterval(buildCountdown);}
+  },500);
+}
+
+function refreshBuildCanvas(){
+  myMap=getMap(roomData.mapId||'grass');
+  const tc=document.getElementById('trap-count');
+  if(tc)tc.textContent=(roomData.traps||[]).length+' trap(s) placed';
+  if(canvas&&ctx)drawMap();
+}
+
+function pickTrap(id){ selectedTrap=id; showBuild(); }
+
+async function handleCanvasClick(e) {
+  if(!canvas)return;
+  const rect=canvas.getBoundingClientRect();
+  const scaleX=canvas.width/rect.width;
+  const scaleY=canvas.height/rect.height;
+  const px=((e.clientX||e.touches[0].clientX)-rect.left)*scaleX/canvas.width;
+  const py=((e.clientY||e.touches[0].clientY)-rect.top)*scaleY/canvas.height;
+  if(py<0.3||py>0.98)return;
+  const traps=roomData.traps?[...roomData.traps]:[];
+  traps.push({type:selectedTrap,px,py,placedBy:myId});
+  await dbUpdate(`rooms/${myRoom}`,{traps});
+  toast('Trap placed!');
+}
+
+async function hostStartRace() {
+  const updates={ phase:'race', timer:Date.now()+RACE_DUR*1000 };
+  const players=roomData.players||{};
+  Object.keys(players).forEach(id=>{
+    updates[`players/${id}/hp`]=100;
+    updates[`players/${id}/x`]=0.03;
+    updates[`players/${id}/y`]=0.65;
+    updates[`players/${id}/finished`]=false;
+    updates[`players/${id}/shielded`]=false;
+  });
+  await dbUpdate(`rooms/${myRoom}`,updates);
+}
+
+// ─── CANVAS / MAP DRAWING ────────────────────────────────────────────────────
+function setupCanvas(id){
+  canvas=document.getElementById(id);
+  if(!canvas)return;
+  canvas.width=canvas.offsetWidth||360;
+  ctx=canvas.getContext('2d');
+  canvas.addEventListener('click',handleCanvasClick);
+  canvas.addEventListener('touchend',e=>{e.preventDefault();handleCanvasClick(e);},{passive:false});
+}
+
+function drawMap(players){
+  if(!ctx||!canvas)return;
+  const W=canvas.width, H=canvas.height;
+  const map=myMap||MAPS[0];
+  ctx.clearRect(0,0,W,H);
+
+  // Sky
+  ctx.fillStyle=map.sky; ctx.fillRect(0,0,W,H);
+
+  // Ground
+  ctx.fillStyle=map.groundLight; ctx.fillRect(0,H*0.62,W,H*0.04);
+  ctx.fillStyle=map.ground;      ctx.fillRect(0,H*0.66,W,H*0.34);
+
+  // Platforms
+  for(const pl of(map.platforms||[])){
+    ctx.fillStyle=map.groundLight; ctx.fillRect(pl.x*W, pl.y*H, pl.w*W, pl.h*H);
+    ctx.fillStyle=map.ground;      ctx.fillRect(pl.x*W,(pl.y+pl.h)*H,pl.w*W,3);
+  }
+
+  // Start / Finish labels
+  ctx.fillStyle=map.ground; ctx.font='bold 11px sans-serif';
+  ctx.fillText('START',3,H*0.6);
+  ctx.font='18px sans-serif';
+  ctx.fillText('🏁',W-22,H*0.59);
+
+  // Traps
+  for(const t of(roomData.traps||[])){
+    const td=getTrap(t.type);
+    ctx.fillStyle=td.col; ctx.font='13px sans-serif';
+    ctx.fillText(td.icon, t.px*W-6, t.py*H+5);
+  }
+
+  // Power-ups
+  for(const pu of(roomData.powerupSpawns||[])){
+    if(!pu.alive)continue;
+    const pd=POWERUP_TYPES.find(x=>x.id===pu.type)||POWERUP_TYPES[0];
+    ctx.fillStyle=pd.col;
+    ctx.beginPath(); ctx.arc(pu.px*W, pu.py*H, 7, 0, Math.PI*2); ctx.fill();
+    ctx.fillStyle='#fff'; ctx.font='bold 9px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(pd.icon, pu.px*W, pu.py*H+3); ctx.textAlign='left';
+  }
+
+  // Players
+  if(players){
+    for(const p of players){
+      const ch=getChar(p.charId);
+      ctx.fillStyle=p.color;
+      ctx.beginPath(); ctx.arc(p.x*W, p.y*H, ch.size, 0, Math.PI*2); ctx.fill();
+      if(p.shielded){
+        ctx.strokeStyle='#639922'; ctx.lineWidth=2;
+        ctx.beginPath(); ctx.arc(p.x*W, p.y*H, ch.size+3, 0, Math.PI*2); ctx.stroke();
+        ctx.lineWidth=1;
+      }
+      // Character icon above
+      ctx.font='12px sans-serif'; ctx.textAlign='center';
+      ctx.fillText(ch.icon, p.x*W, p.y*H-ch.size-2);
+      // HP bar
+      const bw=18;
+      ctx.fillStyle='rgba(0,0,0,0.15)';
+      ctx.fillRect(p.x*W-bw/2, p.y*H+ch.size+2, bw, 3);
+      ctx.fillStyle=p.hp>50?'#639922':'#E24B4A';
+      ctx.fillRect(p.x*W-bw/2, p.y*H+ch.size+2, bw*(p.hp/100), 3);
+      ctx.textAlign='left';
     }
   }
-  else if(d.type==="player_finish"){if(!finishers.includes(d.id))finishers.push(d.id);checkRoundEnd();}
-  else if(d.type==="round_end"){endRound(d.finishers);}
-  else if(d.type==="scores_update"){scores=d.scores;renderHUD();}
 }
 
-function startGame(){channel.publish({type:"start_game",seed:Math.random()});}
+// ─── RACE PHASE ──────────────────────────────────────────────────────────────
+function initRaceUI(){
+  myMap=getMap(roomData.mapId||'grass');
+  myChar=getChar((roomData.players[myId]||{}).charId||'ninja');
+  myX=0.03; myY=0.65; myVX=0; myVY=0; myHP=100; myFinished=false; myJumps=0;
+  shielded=false; boosted=false; activePowerup=null;
+  showRaceUI();
+}
 
-function sr(s){let x=Math.sin(s*127.1+311.7)*43758.5453;return x-Math.floor(x);}
+function showRaceUI(){
+  const rem=Math.max(0,Math.ceil((roomData.timer-Date.now())/1000));
+  document.getElementById('app').innerHTML=`
+    <div class="card" style="padding:.85rem">
+      <div class="info-bar">
+        <span class="badge b-race" style="margin:0" id="race-badge">Race! ${rem}s</span>
+        <span style="font-size:13px;color:var(--muted)">HP: <b id="hpv" style="color:#E24B4A">${Math.round(myHP)}</b><span id="pu-pill"></span></span>
+      </div>
+      <div class="hp-bar"><div class="hp-fill" id="hp-fill" style="width:${myHP}%"></div></div>
+      <canvas id="gc" height="160"></canvas>
+      <div class="controls">
+        <div class="ctrl-btn" id="btn-run"
+          onpointerdown="moving=true" onpointerup="moving=false" onpointerleave="moving=false"
+          ontouchstart="moving=true;event.preventDefault()" ontouchend="moving=false">&#9654; Run</div>
+        <div class="ctrl-btn"
+          onpointerdown="doJump()" ontouchstart="doJump();event.preventDefault()">&#8593; Jump</div>
+        <div class="ctrl-btn"
+          onpointerdown="usePowerup()" ontouchstart="usePowerup();event.preventDefault()">&#9733; Use</div>
+      </div>
+      <p style="font-size:11px;color:var(--muted);text-align:center;margin-top:.3rem">Hold Run, tap Jump, tap Use to activate powerup</p>
+    </div>`;
+  setupCanvas('gc');
+  drawMap(getPlayerList());
+  if(raceTimer)clearInterval(raceTimer);
+  raceTimer=setInterval(raceStep,50);
+}
 
-function buildLevel(seed){
-  W=window.innerWidth;H=window.innerHeight;
-  const gc=document.getElementById('gc');gc.width=W;gc.height=H;
-  const pc=document.getElementById('particles-canvas');pc.width=W;pc.height=H;
-  platforms=[];
-  platforms.push({x:0,y:H-36,w:W,h:36,type:"solid"});
-  const cols=5,rows=4;
-  let s=seed*999;
-  for(let r=0;r<rows;r++){
-    for(let c=0;c<cols;c++){
-      s+=1.3;
-      if(sr(s)>0.3){
-        const pw=70+sr(s+.1)*90;
-        const px=c*(W/cols)+sr(s+.2)*40-10;
-        const py=H-130-(r*(H/rows*0.55))+sr(s+.3)*30;
-        const moving=sr(s+.5)>0.75;
-        platforms.push({x:px,y:py,w:pw,h:16,type:"solid",moving,mx:moving?sr(s+.6)*3-1.5:0,ox:px,range:sr(s+.7)*120+60});
+function getPlayerList(){
+  return Object.entries(roomData.players||{}).map(([id,p])=>{
+    if(id===myId)return{...p,id,x:myX,y:myY,hp:myHP,shielded};
+    return{...p,id};
+  });
+}
+
+function doJump(){
+  const maxJ=myChar.dblJump?2:1;
+  if(myJumps<maxJ){ myVY=myChar.jump; myJumps++; }
+}
+
+async function usePowerup(){
+  if(!activePowerup)return;
+  if(activePowerup==='shield'){ shielded=true; setTimeout(()=>{shielded=false;},8000); toast('Shield active for 8s!'); }
+  if(activePowerup==='boost'){  boosted=true;  setTimeout(()=>{boosted=false;},5000);  toast('Speed boost 5s!'); }
+  if(activePowerup==='heal'){   myHP=Math.min(100,myHP+40); toast('+40 HP!'); }
+  activePowerup=null;
+  await dbUpdate(`rooms/${myRoom}/players/${myId}`,{powerup:null,shielded});
+}
+
+async function raceStep(){
+  if(!roomData||roomData.phase!=='race'){ clearInterval(raceTimer); return; }
+  const map=myMap||MAPS[0];
+  const gravity=myChar.slowFall?0.0016:0.0032;
+  const spd=boosted?myChar.speed*1.6:myChar.speed;
+
+  if(moving&&!myFinished) myVX=spd; else myVX=0;
+  myVY+=gravity;
+  myX+=myVX; myY+=myVY;
+
+  // Ground collision
+  if(myY>=0.65){ myY=0.65; myVY=0; myJumps=0; }
+
+  // Platform collision
+  for(const pl of(map.platforms||[])){
+    if(myX>=pl.x&&myX<=pl.x+pl.w&&myY>=pl.y&&myY<=pl.y+pl.h&&myVY>0){
+      myY=pl.y; myVY=0; myJumps=0;
+      if(map.slippery&&!myChar.iceImmune) myVX*=1.03;
+    }
+  }
+
+  myX=Math.max(0.01,Math.min(0.98,myX));
+  if(myX>=0.95&&!myFinished){ myFinished=true; myVX=0; toast('You finished! 🏁'); }
+
+  // Trap collisions
+  if(!myFinished&&!shielded){
+    for(const t of(roomData.traps||[])){
+      const td=getTrap(t.type);
+      const dx=Math.abs(myX-t.px), dy=Math.abs(myY-t.py);
+      if(dx<0.045&&dy<0.12){
+        if(td.dmg){
+          let d=td.dmg;
+          if(myChar.armor) d*=0.7;
+          if(myChar.ghost&&t.type==='spike') d=0;
+          myHP=Math.max(0,myHP-d*0.045);
+        }
+        if(td.slow&&!myChar.iceImmune) myVX*=0.35;
+        if(td.bounce){ myVY=myChar.jump*0.85; myJumps=0; }
+        if(td.sticky) myVX=0;
       }
     }
   }
-  flag={x:W-90+sr(seed+1)*40,y:H-Math.floor((H*0.55))};
-  platforms.push({x:flag.x-50,y:flag.y+60,w:100,h:16,type:"solid"});
-}
 
-function initPlayers(){
-  gameObjects={};
-  const ids=Object.keys(players);
-  ids.forEach((id,i)=>{
-    gameObjects[id]={x:50+i*40,y:H-90,sx:50+i*40,sy:H-90,vx:0,vy:0,onGround:false,finished:false,dead:false,color:players[id].color,name:players[id].name,hat:players[id].hat||"👑",w:22,h:28,deathTimer:0,invincible:0,poisoned:0};
-  });
-  lowGravity=false;
-}
+  // Powerup pickup
+  const spawns=roomData.powerupSpawns||[];
+  for(let i=0;i<spawns.length;i++){
+    const pu=spawns[i];
+    if(!pu.alive)continue;
+    if(Math.abs(myX-pu.px)<0.06&&Math.abs(myY-pu.py)<0.12){
+      activePowerup=pu.type;
+      pu.alive=false;
+      toast('Picked up '+POWERUP_TYPES.find(x=>x.id===pu.type)?.lbl+'!');
+    }
+  }
 
-function beginRound(seed){
-  roundNum++;if(roundNum===1)obstacles=[];
-  buildLevel(seed);initPlayers();finishers=[];
-  showGame();
-  if(isHost){
-    const order=Object.keys(players).sort(()=>Math.random()-.5);
-    setTimeout(()=>channel.publish({type:"placement_order",order}),400);
+  // Update DOM
+  const hpv=document.getElementById('hpv');
+  const hpf=document.getElementById('hp-fill');
+  const badge=document.getElementById('race-badge');
+  const ppill=document.getElementById('pu-pill');
+  const rem=Math.max(0,Math.ceil((roomData.timer-Date.now())/1000));
+  if(hpv) hpv.textContent=Math.round(myHP);
+  if(hpf) hpf.style.width=Math.round(myHP)+'%';
+  if(badge) badge.textContent='Race! '+rem+'s';
+  if(ppill) ppill.innerHTML=activePowerup?`<span class="pu-pill">${activePowerup}</span>`:'';
+
+  drawMap(getPlayerList());
+
+  // Sync to Firebase every 600ms
+  const now=Date.now();
+  if(now-lastSave>600){
+    lastSave=now;
+    const playerUpdate={
+      x:myX, y:myY, hp:Math.round(myHP),
+      finished:myFinished, shielded
+    };
+    const updates={ [`players/${myId}`]:playerUpdate, powerupSpawns:spawns };
+    if(amHost()){
+      const expired=Date.now()>roomData.timer;
+      const allDone=Object.values(roomData.players).every(p=>p.finished||p.hp<=0);
+      if(expired||allDone){
+        calcScores();
+        updates.phase='results';
+      }
+    }
+    await dbUpdate(`rooms/${myRoom}`,updates).catch(()=>{});
   }
 }
 
-function showGame(){
-  document.getElementById('ui').style.display='none';
-  document.getElementById('canvas-wrap').style.display='block';
-  document.getElementById('particles-canvas').style.display='block';
-  document.getElementById('hud').style.display='flex';
-  document.getElementById('timer').style.display='block';
-  document.getElementById('round-tag').style.display='block';
-  document.getElementById('round-tag').textContent=`Round ${roundNum}/${maxRounds}`;
-  document.getElementById('end-overlay').style.display='none';
-  renderHUD();
-  if(animId)cancelAnimationFrame(animId);
-  gameLoop();setupControls();
-}
-
-function startPlacementPhase(){
-  gameState="placement";myPlacementDone=false;
-  showBanner("🏰 Place Your Traps!",2200);
-  setTimeout(processPlacementTurn,2300);
-}
-function processPlacementTurn(){
-  if(placementIdx>=placementOrder.length){
-    if(isHost)setTimeout(()=>channel.publish({type:"start_run"}),600);
-    return;
-  }
-  const cur=placementOrder[placementIdx];
-  if(cur===myId&&!myPlacementDone){showObstaclePicker();}
-  else{const pn=(players[cur]&&players[cur].name)||"?";showToast(`${pn} is placing a trap...`);}
-}
-function nextPlacement(){placementIdx++;processPlacementTurn();}
-function showObstaclePicker(){
-  const el=document.getElementById('obstacle-picker');
-  document.getElementById('obs-btns').innerHTML=OBS.map(o=>`<button class="obs-btn" style="border-color:${o.color};background:${o.bcolor}" onclick="selectObs('${o.id}')">${o.label}</button>`).join('');
-  el.style.display='flex';gameState="picking_obs";
-}
-function hideObstaclePicker(){document.getElementById('obstacle-picker').style.display='none';}
-let pendingObs=null;
-function selectObs(id){pendingObs=id;hideObstaclePicker();showToast("Click any platform to place your trap!");gameState="placing_obs";}
-function skipPlacement(){hideObstaclePicker();myPlacementDone=true;channel.publish({type:"skip_placement"});}
-function placeOnPlatform(px,py){
-  if(gameState!=="placing_obs"||!pendingObs)return;
-  let best=null,bestD=9999;
-  platforms.forEach(p=>{
-    if(p.y>=H-38)return;
-    const cx=p.x+p.w/2,cy=p.y;
-    const d=Math.hypot(px-cx,py-cy);
-    if(d<bestD){bestD=d;best=p;}
-  });
-  if(!best||bestD>180){showToast("Click closer to a platform!");return;}
-  const obs={type:pendingObs,x:best.x+best.w/2-20,y:best.y-30,id:"o"+Date.now(),platRef:{x:best.ox||best.x,y:best.y}};
-  myPlacementDone=true;pendingObs=null;
-  channel.publish({type:"place_obstacle",obs});
-  gameState="placement";
-}
-
-function startRunPhase(){
-  gameState="running";hideObstaclePicker();
-  showBanner("⚔ GO!",900);
-  runTimer=35;document.getElementById('timer').textContent="⏱ "+runTimer;
-  if(runInterval)clearInterval(runInterval);
-  runInterval=setInterval(()=>{
-    runTimer--;
-    document.getElementById('timer').textContent="⏱ "+runTimer;
-    if(runTimer===10)showToast("10 seconds left!");
-    if(runTimer<=0){clearInterval(runInterval);if(isHost)channel.publish({type:"round_end",finishers});}
-  },1000);
-  document.getElementById('status-toast').style.display='none';
-}
-function checkRoundEnd(){
-  if(isHost&&finishers.length>=Object.keys(players).length){clearInterval(runInterval);channel.publish({type:"round_end",finishers});}
-}
-function endRound(flist){
-  clearInterval(runInterval);gameState="round_end";
-  const total=Object.keys(players).length;
-  const n=flist.length;
-  if(n>0&&n<total){
-    flist.forEach((id,i)=>{if(scores[id]!==undefined)scores[id]+=(n-i);});
-    if(isHost)channel.publish({type:"scores_update",scores});
-  }
-  renderHUD();
-  if(roundNum>=maxRounds){setTimeout(showFinalResults,1800);}
-  else{showBanner(n===0?"No one made it! 💀":n>=total?"Too easy — no points!":"Round Over!",2000);setTimeout(()=>{if(isHost)channel.publish({type:"begin_round",seed:Math.random()});},2800);}
-}
-
-function showFinalResults(){
-  document.getElementById('end-overlay').style.display='flex';
-  const sorted=Object.entries(scores).sort((a,b)=>b[1]-a[1]);
-  const winner=players[sorted[0][0]];
-  document.getElementById('winner-name').textContent=(winner?.hat||"👑")+" "+(winner?.name||"?")+` wins!`;
-  document.getElementById('winner-sub').textContent=`${sorted[0][1]} points — the Castle Champion`;
-  const medals=["gold","silver","bronze"];
-  const nums=["🥇","🥈","🥉"];
-  document.getElementById('results-list').innerHTML=sorted.map(([id,sc],i)=>{
+function calcScores(){
+  const players=roomData.players||{};
+  Object.keys(players).forEach(id=>{
     const p=players[id];
-    return`<div class="result-row ${medals[i]||''}"><span class="result-place">${nums[i]||i+1}</span><span>${p?.hat||""} ${p?.name||id}</span><span style="color:#ffcc44;font-weight:600">${sc} pts</span></div>`;
-  }).join('');
-  spawnParticles(W/2,H/2,80,"#ffcc44");spawnParticles(W/2,H/2,60,"#ff8800");spawnParticles(W/2,H/2,40,"#ffffff");
-}
-function restartGame(){
-  document.getElementById('end-overlay').style.display='none';
-  roundNum=0;obstacles=[];scores={};
-  if(isHost)startGame();
-}
-
-const GRAV=0.52,SPD=4.2,JUMP=-13;
-let lastSend=0,lastTs=0;
-
-function gameLoop(){
-  const gc=document.getElementById('gc');
-  const ctx=gc.getContext('2d');
-  const pc=document.getElementById('particles-canvas');
-  const pctx=pc.getContext('2d');
-  function loop(ts){
-    const dt=Math.min((ts-lastTs)/16,3);lastTs=ts;
-    W=gc.width;H=gc.height;
-    ctx.clearRect(0,0,W,H);
-    pctx.clearRect(0,0,W,H);
-    drawBG(ctx,ts);
-    updatePlatforms(dt);
-    drawPlatforms(ctx,ts);
-    drawObstacles(ctx,ts);
-    drawFlag(ctx,ts);
-    if(gameState==="running"||gameState==="round_end"){
-      updateMyPlayer(dt);
-      if(ts-lastSend>60){
-        const me=gameObjects[myId];
-        if(me)channel.publish({type:"player_move",id:myId,x:me.x,y:me.y,vx:me.vx,dead:me.dead,finished:me.finished});
-        lastSend=ts;
-      }
-    }
-    drawPlayers(ctx,ts);
-    updateParticles(pctx,dt);
-    animId=requestAnimationFrame(loop);
-  }
-  animId=requestAnimationFrame(loop);
-}
-
-let bgStars=[];
-for(let i=0;i<80;i++)bgStars.push({x:Math.random()*2000,y:Math.random()*1200,s:Math.random()*1.5+.5,sp:Math.random()*.3+.05});
-
-function drawBG(ctx,ts){
-  const g=ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,"#0d0520");g.addColorStop(1,"#1a0535");
-  ctx.fillStyle=g;ctx.fillRect(0,0,W,H);
-  bgStars.forEach(s=>{
-    const a=0.3+0.4*Math.abs(Math.sin(ts*.0005*s.sp+s.x));
-    ctx.fillStyle=`rgba(255,255,255,${a})`;
-    ctx.fillRect(s.x%W,s.y%H,s.s,s.s);
-  });
-  ctx.fillStyle="rgba(255,240,180,0.08)";ctx.beginPath();ctx.arc(W-70,70,45,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="rgba(255,240,180,0.12)";ctx.beginPath();ctx.arc(W-70,70,28,0,Math.PI*2);ctx.fill();
-  const cx=W/2;
-  ctx.fillStyle="rgba(20,5,45,0.8)";
-  ctx.fillRect(cx-90,H-280,180,280);
-  ctx.fillRect(cx-110,H-240,20,120);ctx.fillRect(cx+90,H-240,20,120);
-  [[cx-110,H-240],[cx-96,H-240],[cx-82,H-240]].forEach(([bx,by])=>ctx.fillRect(bx,by-18,12,18));
-  [[cx+90,H-240],[cx+76,H-240],[cx+62,H-240]].forEach(([bx,by])=>ctx.fillRect(bx,by-18,12,18));
-  const wl=0.4+0.35*Math.sin(ts*.001);
-  ctx.fillStyle=`rgba(255,200,80,${wl})`;
-  ctx.fillRect(cx-18,H-220,16,20);ctx.fillRect(cx+2,H-220,16,20);
-}
-
-function updatePlatforms(dt){
-  platforms.forEach(p=>{
-    if(p.moving){
-      p.x+=p.mx*dt;
-      if(p.x>p.ox+p.range||p.x<p.ox-p.range)p.mx*=-1;
-    }
+    const pts=(p.finished?100:0)+Math.round(p.hp||0);
+    roomData.players[id].score=(p.score||0)+pts;
   });
 }
 
-function drawPlatforms(ctx,ts){
-  platforms.forEach(p=>{
-    if(p.y>=H-38){
-      ctx.fillStyle="#2a1055";ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle="#3a1a70";ctx.fillRect(p.x,p.y,p.w,4);
-    }else{
-      ctx.fillStyle=p.moving?"#44228a":"#5533aa";
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-      ctx.fillStyle=p.moving?"#6644cc":"#7755cc";
-      ctx.fillRect(p.x,p.y,p.w,5);
-      if(p.moving){
-        ctx.strokeStyle="rgba(200,150,255,0.3)";ctx.lineWidth=1;
-        ctx.setLineDash([4,4]);ctx.strokeRect(p.x,p.y,p.w,p.h);ctx.setLineDash([]);
-      }
-    }
+// ─── RESULTS ──────────────────────────────────────────────────────────────────
+function showResults(){
+  if(raceTimer){clearInterval(raceTimer);raceTimer=null;}
+  const ps=Object.values(roomData.players||{}).sort((a,b)=>(b.score||0)-(a.score||0));
+  const medals=['🥇','🥈','🥉'];
+  document.getElementById('app').innerHTML=`
+    <div class="card">
+      <span class="badge b-done">Round over</span>
+      <h2>Leaderboard</h2>
+      ${ps.map((p,i)=>{
+        const ch=getChar(p.charId);
+        return`<div class="row">
+          <span><span class="dot" style="background:${p.color}"></span>
+          <span class="medal">${medals[i]||''}</span> ${ch.icon} ${p.name}</span>
+          <span class="${i===0?'gold':''}">${p.score||0} pts</span>
+        </div>`;
+      }).join('')}
+      <p style="font-size:12px;margin-top:.5rem">Finish bonus: 100 pts + remaining HP</p>
+      ${amHost()?`
+        <div class="btn-row" style="margin-top:.75rem">
+          <button class="btn" onclick="hostGoMapSelect()">New Map</button>
+          <button class="btn btn-primary" onclick="hostPlayAgain()">Play Again</button>
+        </div>`
+      :`<p style="text-align:center;margin-top:.75rem;font-size:13px">⏳ Waiting for host...</p>`}
+    </div>`;
+}
+
+async function hostPlayAgain(){
+  const map=getMap(roomData.mapId||'grass');
+  const spawns=[
+    {px:0.3,py:map.platforms.length?0.37:0.55,type:POWERUP_TYPES[Math.floor(Math.random()*3)].id,alive:true},
+    {px:0.62,py:map.platforms.length?0.34:0.55,type:POWERUP_TYPES[Math.floor(Math.random()*3)].id,alive:true},
+  ];
+  const updates={phase:'build',timer:Date.now()+BUILD_DUR*1000,traps:[],powerupSpawns:spawns};
+  const players=roomData.players||{};
+  Object.keys(players).forEach(id=>{
+    updates[`players/${id}/hp`]=100;
+    updates[`players/${id}/x`]=0.03;
+    updates[`players/${id}/y`]=0.65;
+    updates[`players/${id}/finished`]=false;
+    updates[`players/${id}/shielded`]=false;
   });
+  await dbUpdate(`rooms/${myRoom}`,updates);
 }
 
-function drawObstacles(ctx,ts){
-  obstacles.forEach(o=>{
-    ctx.save();
-    const t=ts*.001;
-    switch(o.type){
-      case"spike":
-        for(let i=0;i<3;i++){
-          ctx.fillStyle=i===1?"#ff6666":"#ff4444";
-          ctx.beginPath();ctx.moveTo(o.x+i*14,o.y+22);ctx.lineTo(o.x+i*14+7,o.y+2);ctx.lineTo(o.x+i*14+14,o.y+22);ctx.fill();
-        }
-        break;
-      case"bounce":
-        const by=2*Math.sin(t*3);
-        ctx.fillStyle="#44ccff";ctx.beginPath();ctx.ellipse(o.x+20,o.y+16+by,18,8,0,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle="rgba(100,220,255,0.5)";ctx.beginPath();ctx.ellipse(o.x+20,o.y+8+by,12,4,0,0,Math.PI*2);ctx.fill();
-        break;
-      case"fire":
-        const fa=0.7+0.3*Math.sin(t*5);
-        ctx.fillStyle=`rgba(255,140,0,${fa})`;
-        ctx.beginPath();ctx.moveTo(o.x+10,o.y+26);ctx.quadraticCurveTo(o.x+20,o.y+2,o.x+30,o.y+26);ctx.fill();
-        ctx.fillStyle=`rgba(255,220,50,${fa})`;
-        ctx.beginPath();ctx.moveTo(o.x+14,o.y+26);ctx.quadraticCurveTo(o.x+20,o.y+10,o.x+26,o.y+26);ctx.fill();
-        break;
-      case"ice":
-        ctx.fillStyle="rgba(150,210,255,0.6)";ctx.fillRect(o.x,o.y+18,40,6);
-        ctx.strokeStyle="#aaddff";ctx.lineWidth=1;ctx.strokeRect(o.x,o.y+18,40,6);
-        ctx.fillStyle="rgba(200,240,255,0.4)";ctx.fillRect(o.x+2,o.y+19,8,2);
-        break;
-      case"wind":
-        ctx.strokeStyle=`rgba(136,255,200,${0.5+0.4*Math.sin(t*4)})`;ctx.lineWidth=2;
-        for(let i=0;i<3;i++){
-          ctx.beginPath();ctx.moveTo(o.x+(t*30%40),o.y+i*9);
-          ctx.bezierCurveTo(o.x+10,o.y+i*9-5,o.x+30,o.y+i*9+5,o.x+40,o.y+i*9);ctx.stroke();
-        }
-        break;
-      case"poison":
-        const pa=0.5+0.4*Math.sin(t*2);
-        ctx.fillStyle=`rgba(100,220,50,${pa})`;
-        ctx.beginPath();ctx.arc(o.x+20,o.y+14,14,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle="rgba(150,255,80,.8)";ctx.font="16px sans-serif";ctx.textAlign="center";
-        ctx.fillText("☠",o.x+20,o.y+20);
-        break;
-      case"teleport":
-        const ta=t*2;
-        ctx.strokeStyle=`rgba(200,136,255,${0.4+0.4*Math.sin(ta)})`;ctx.lineWidth=2;
-        ctx.beginPath();ctx.arc(o.x+20,o.y+14,14+3*Math.sin(ta),0,Math.PI*2);ctx.stroke();
-        ctx.fillStyle=`rgba(150,80,255,${0.3+0.2*Math.sin(ta)})`;
-        ctx.beginPath();ctx.arc(o.x+20,o.y+14,10,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle="#cc88ff";ctx.font="14px sans-serif";ctx.textAlign="center";ctx.fillText("🌀",o.x+20,o.y+19);
-        break;
-      case"gravity":
-        ctx.fillStyle=`rgba(255,170,255,${0.2+0.15*Math.sin(t*2)})`;
-        ctx.beginPath();ctx.arc(o.x+20,o.y+14,18,0,Math.PI*2);ctx.fill();
-        ctx.fillStyle="#ffaaff";ctx.font="16px sans-serif";ctx.textAlign="center";ctx.fillText("🪐",o.x+20,o.y+20);
-        break;
-    }
-    ctx.restore();
-  });
+// ─── EXPOSE TO HTML onclick ───────────────────────────────────────────────────
+window.joinRoom=joinRoom;
+window.pickChar=pickChar;
+window.hostGoMapSelect=hostGoMapSelect;
+window.pickMap=pickMap;
+window.hostStartBuild=hostStartBuild;
+window.pickTrap=pickTrap;
+window.hostStartRace=hostStartRace;
+window.doJump=doJump;
+window.usePowerup=usePowerup;
+window.hostPlayAgain=hostPlayAgain;
+window.moving=false;
+Object.defineProperty(window,'moving',{get:()=>moving,set:v=>moving=v});
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+function boot(){
+  const ok=initFirebase();
+  document.getElementById('app').innerHTML=`
+    <div class="card">
+      <h1>Trap Race Deluxe 🏁</h1>
+      <p style="margin-bottom:.75rem">Place traps, then race. 60-second runs, 6 characters, 4 maps, powerups.</p>
+      ${!ok||FIREBASE_CONFIG.apiKey==='REPLACE_WITH_YOUR_API_KEY'?`
+        <div class="firebase-note">
+          ⚠️ <b>Setup needed:</b> Open <code>index.html</code> and replace the Firebase config values at the top of the script with your own Firebase project credentials.<br><br>
+          <a href="https://console.firebase.google.com" target="_blank" style="color:var(--info-txt)">→ Get free Firebase credentials</a>
+        </div>`:''}
+      <input type="text" id="iname" placeholder="Your name" maxlength="14"/>
+      <input type="text" id="iroom" placeholder="Room code (leave blank to create)" maxlength="8"
+             style="text-transform:uppercase" oninput="this.value=this.value.toUpperCase()"/>
+      <button class="btn btn-primary" onclick="joinRoom()">Join / Create Room →</button>
+    </div>`;
 }
 
-function drawFlag(ctx,ts){
-  const t=ts*.001;
-  ctx.fillStyle="#aaa";ctx.fillRect(flag.x,flag.y-70,4,70);
-  ctx.shadowBlur=16;ctx.shadowColor="#ffcc44";
-  ctx.fillStyle="#ffcc44";
-  ctx.beginPath();ctx.moveTo(flag.x+4,flag.y-70);ctx.lineTo(flag.x+34,flag.y-55);ctx.lineTo(flag.x+4,flag.y-40);ctx.fill();
-  ctx.shadowBlur=0;
-  ctx.fillStyle=`rgba(255,204,68,${0.08+0.05*Math.sin(t*3)})`;
-  ctx.beginPath();ctx.arc(flag.x+2,flag.y-20,28,0,Math.PI*2);ctx.fill();
-}
-
-function drawPlayers(ctx,ts){
-  const t=ts*.001;
-  Object.entries(gameObjects).forEach(([id,p])=>{
-    const rx=id===myId?p.x:p.sx;
-    const ry=id===myId?p.y:p.sy;
-    if(p.dead){
-      ctx.globalAlpha=0.3+0.2*Math.sin(t*4);
-      ctx.fillStyle=p.color;ctx.fillRect(rx,ry,p.w,p.h);
-      ctx.globalAlpha=1;return;
-    }
-    if(p.poisoned>0){ctx.shadowBlur=8;ctx.shadowColor="#88ff44";}
-    if(p.invincible>0){ctx.shadowBlur=12;ctx.shadowColor="#ffcc44";}
-    ctx.fillStyle=p.color;ctx.fillRect(rx,ry+8,p.w,p.h-8);
-    ctx.fillStyle=lighten(p.color,40);ctx.fillRect(rx+3,ry+10,6,10);
-    ctx.fillStyle="#ffe0b0";ctx.fillRect(rx+3,ry+6,p.w-6,13);
-    ctx.fillStyle="#222";ctx.fillRect(rx+5,ry+9,4,4);ctx.fillRect(rx+13,ry+9,4,4);
-    ctx.fillStyle=darken(p.color,30);ctx.fillRect(rx+1,ry,p.w-2,10);ctx.fillRect(rx+1,ry+5,p.w-2,3);
-    ctx.font="13px sans-serif";ctx.textAlign="center";ctx.fillText(p.hat||"👑",rx+p.w/2,ry-1);
-    ctx.shadowBlur=0;
-    ctx.fillStyle=id===myId?"#fff":"rgba(255,255,255,.8)";
-    ctx.font=`${id===myId?"bold ":""}10px sans-serif`;ctx.textAlign="center";
-    ctx.fillText(p.name,rx+p.w/2,ry-14);
-    if(p.finished){
-      ctx.fillStyle="#ffcc44";ctx.font="16px sans-serif";ctx.fillText("✓",rx+p.w/2,ry-26);
-    }
-  });
-  ctx.textAlign="left";ctx.globalAlpha=1;
-}
-
-function lighten(hex,amt){return adjustColor(hex,amt);}
-function darken(hex,amt){return adjustColor(hex,-amt);}
-function adjustColor(hex,amt){
-  const n=parseInt(hex.slice(1),16);
-  const r=Math.min(255,Math.max(0,(n>>16)+amt));
-  const g=Math.min(255,Math.max(0,((n>>8)&0xff)+amt));
-  const b=Math.min(255,Math.max(0,(n&0xff)+amt));
-  return"#"+((1<<24)+(r<<16)+(g<<8)+b).toString(16).slice(1);
-}
-
-function updateMyPlayer(dt){
-  const p=gameObjects[myId];if(!p||p.finished)return;
-  const grav=lowGravity?GRAV*0.35:GRAV;
-  if(p.dead){
-    p.deathTimer=(p.deathTimer||0)+dt;
-    if(p.deathTimer>90){p.dead=false;p.deathTimer=0;p.x=60;p.y=H-90;p.vx=0;p.vy=0;p.invincible=60;}
-    return;
-  }
-  if(p.invincible>0)p.invincible-=dt;
-  if(p.poisoned>0){p.poisoned-=dt;p.vy+=0.1*dt;}
-  if(keys.left)p.vx+=((-SPD)-p.vx)*0.25;
-  else if(keys.right)p.vx+=((SPD)-p.vx)*0.25;
-  else p.vx*=0.75;
-  p.vy+=grav*dt;if(p.vy>18)p.vy=18;
-  p.x+=p.vx*dt;p.y+=p.vy*dt;
-  p.onGround=false;
-  platforms.forEach(pl=>{
-    if(p.x+p.w>pl.x+2&&p.x<pl.x+pl.w-2){
-      if(p.y+p.h>pl.y&&p.y+p.h<pl.y+pl.h+14&&p.vy>=0){
-        p.y=pl.y-p.h;p.vy=0;p.onGround=true;
-      }
-    }
-  });
-  if(jumpPressed&&p.onGround){p.vy=lowGravity?JUMP*1.4:JUMP;p.onGround=false;}
-  jumpPressed=false;
-  if(p.invincible<=0){
-    obstacles.forEach(o=>{
-      if(p.x+p.w>o.x+4&&p.x<o.x+36&&p.y+p.h>o.y+4&&p.y<o.y+26){
-        switch(o.type){
-          case"spike":case"fire":kill(p);break;
-          case"bounce":p.vy=-20;break;
-          case"ice":p.vx*=2.5;break;
-          case"wind":p.vx+=5;break;
-          case"poison":if(!p.poisoned){p.poisoned=180;showToast("☠ Poisoned! Extra gravity!");}break;
-          case"teleport":p.x=80;p.y=H-100;p.vx=0;p.vy=0;showToast("🌀 Teleported back!");break;
-          case"gravity":lowGravity=true;setTimeout(()=>lowGravity=false,4000);showToast("🪐 Low gravity!");break;
-        }
-        p.invincible=30;
-      }
-    });
-  }
-  if(p.x<0){p.x=0;p.vx=0;}if(p.x+p.w>W){p.x=W-p.w;p.vx=0;}
-  if(p.y>H+80)kill(p);
-  if(!p.finished&&Math.abs(p.x+p.w/2-(flag.x+2))<44&&Math.abs(p.y+p.h/2-(flag.y-30))<55){
-    p.finished=true;
-    spawnParticles(p.x,p.y,20,p.color);
-    if(!finishers.includes(myId)){finishers.push(myId);channel.publish({type:"player_finish",id:myId});}
-    checkRoundEnd();
-  }
-}
-
-function kill(p){if(!p.dead&&p.invincible<=0){p.dead=true;p.deathTimer=0;p.vy=-8;spawnParticles(p.x+p.w/2,p.y,12,p.color);}}
-
-function spawnParticles(x,y,n,color){
-  for(let i=0;i<n;i++){
-    const a=Math.random()*Math.PI*2;
-    const sp=2+Math.random()*6;
-    particles.push({x,y,vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-3,life:1,color,size:2+Math.random()*4});
-  }
-}
-function updateParticles(ctx,dt){
-  particles=particles.filter(p=>p.life>0);
-  particles.forEach(p=>{
-    p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=0.15*dt;p.life-=0.025*dt;
-    ctx.globalAlpha=Math.max(0,p.life);
-    ctx.fillStyle=p.color;ctx.fillRect(p.x,p.y,p.size,p.size);
-  });
-  ctx.globalAlpha=1;
-}
-
-function setupControls(){
-  document.onkeydown=e=>{
-    if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A")keys.left=true;
-    if(e.key==="ArrowRight"||e.key==="d"||e.key==="D")keys.right=true;
-    if(!e.repeat&&(e.key==="ArrowUp"||e.key===" "||e.key==="w"||e.key==="W")){jumpPressed=true;keys.jump=true;}
-    if(gameState==="placing_obs"&&e.key==="Escape")skipPlacement();
-    e.preventDefault();
-  };
-  document.onkeyup=e=>{
-    if(e.key==="ArrowLeft"||e.key==="a"||e.key==="A")keys.left=false;
-    if(e.key==="ArrowRight"||e.key==="d"||e.key==="D")keys.right=false;
-    if(e.key==="ArrowUp"||e.key===" "||e.key==="w"||e.key==="W")keys.jump=false;
-  };
-  document.getElementById('gc').onclick=e=>{if(gameState==="placing_obs")placeOnPlatform(e.clientX,e.clientY);};
-  document.getElementById('gc').ontouchstart=e=>{if(gameState==="placing_obs"){const t=e.touches[0];placeOnPlatform(t.clientX,t.clientY);}};
-  const isMobile=/Mobi|Android/i.test(navigator.userAgent);
-  if(isMobile){
-    document.getElementById('mobile-controls').style.display='block';
-    document.getElementById('btn-left').ontouchstart=e=>{e.preventDefault();keys.left=true;};
-    document.getElementById('btn-left').ontouchend=()=>keys.left=false;
-    document.getElementById('btn-right').ontouchstart=e=>{e.preventDefault();keys.right=true;};
-    document.getElementById('btn-right').ontouchend=()=>keys.right=false;
-    document.getElementById('btn-jump').ontouchstart=e=>{e.preventDefault();jumpPressed=true;};
-  }
-}
-
-function renderHUD(){
-  document.getElementById('hud').innerHTML=Object.entries(scores).sort((a,b)=>b[1]-a[1]).map(([id,sc])=>{
-    const p=players[id];
-    return`<div class="score-badge"><span class="score-dot" style="background:${p?.color||'#fff'}"></span>${p?.name||id}: <strong>${sc}</strong></div>`;
-  }).join('');
-}
-
-let bannerT;
-function showBanner(msg,dur){
-  const el=document.getElementById('phase-banner');
-  el.innerHTML=msg.replace(/\n/g,"<br>");el.style.display='block';
-  clearTimeout(bannerT);bannerT=setTimeout(()=>el.style.display='none',dur);
-}
-let toastT;
-function showToast(msg){
-  const el=document.getElementById('status-toast');
-  el.textContent=msg;el.style.display='block';
-  clearTimeout(toastT);toastT=setTimeout(()=>el.style.display='none',2500);
-}
+boot();
 </script>
 </body>
 </html>
